@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Wikidata violations visualiser</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+  <div id="status"></div>
+
+  <div id="chart" style="display: none">
+    <div id="chart-header">
+      Header
+    </div>
+    <div id="chart-outer"><div id="chart-placeholder"></div></div>
+    <div id="chart-actions">
+      <a href="#" target="_blank" id="chart-violink">Open constraint violations page</a>
+      or
+      <button type="button" id="close">Return to table</button>
+    </div>
+  </div>
+
+  <div id="sparlines"></div>
+
+  <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flot/0.8.3/jquery.flot.min.js" integrity="sha256-LMe2LItsvOs1WDRhgNXulB8wFpq885Pib0bnrjETvfI=" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flot/0.8.3/jquery.flot.time.min.js" integrity="sha256-gCrSjRo/Z6W7Cfc1oEL6BH8HKjgiiO+ItV8A+z9Scpw=" crossorigin="anonymous"></script>
+  <script src="main.js" charset="utf-8"></script>
+</body>
+
+</html>
