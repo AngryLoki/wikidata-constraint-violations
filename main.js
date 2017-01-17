@@ -1,4 +1,4 @@
-(function () {
+(function() {
   "use strict";
 
   var chart = document.getElementById('chart');
@@ -38,7 +38,7 @@
     });
   }
 
-  document.getElementById('close').addEventListener('click', function () {
+  document.getElementById('close').addEventListener('click', function() {
     chart.style.display = 'none';
     sparlines.style.display = '';
   });
@@ -98,7 +98,7 @@
   function drawSparkline(data) {
     var el, num;
 
-    if (typeof (data) === "number") {
+    if (typeof(data) === "number") {
       el = document.createElement('div');
       el.setAttribute('class', 'midline');
 
@@ -157,7 +157,7 @@
   }
 
   function parseVioNames(content) {
-    return content.match(/!![^!\n]+/g).map(function (x) {
+    return content.match(/!![^!\n]+/g).map(function(x) {
       return x.slice(2).trim();
     });
   }
@@ -165,103 +165,102 @@
   function parseContent(content) {
     var sparkdata = {};
     var vionames = parseVioNames(content);
+    var lines = content.match(/\n\| [^\n]+/g);
 
-    var lines = content.match(/\n\| [^\n]+/g).map(function (x) {
-      return x.slice(2).split("||").map(function (x) {
-        return x.trim();
-      });
-    }).forEach(function (item) {
-      var pid = item[0].match(/P\d+/);
+    for (var i = 0; i < lines.length; i++) {
+      var cells = lines[i].slice(2).split("||");
+      var pid = cells[0].match(/P\d+/);
       sparkdata[pid] = {};
-      for (var i = 1; i < item.length; i++) {
-        if (item[i]) {
-          sparkdata[pid][vionames[i - 1]] = parseInt(item[i]);
+      for (var j = 1; j < cells.length; j++) {
+        var cellData = cells[j].trim();
+        if (cellData) {
+          sparkdata[pid][vionames[j - 1]] = parseInt(cellData, 10);
         }
       }
-    });
+    }
 
     return sparkdata;
   }
 
   function genHeader(display_viorefs) {
-    var $header = document.createElement('tr');
+    var header = document.createElement('tr');
 
     var el;
     el = document.createElement('th');
     el.textContent = 'Property';
-    $header.appendChild(el);
+    header.appendChild(el);
 
     for (var id = 0; id < display_viorefs.length; id++) {
       var colname = display_viorefs[id];
       el = document.createElement('th');
       el.textContent = colname;
-      $header.appendChild(el);
+      header.appendChild(el);
     }
-    return $header;
+    return header;
   }
 
   function genTable(viorefs, sparkdata, chartdata) {
     var el;
 
-    var $table = document.createElement('table');
-    $table.setAttribute("id", "violations");
+    var table = document.createElement('table');
+    table.setAttribute("id", "violations");
 
     var linenum = 0;
 
     for (var prop in sparkdata) {
       if (linenum % 20 === 0) {
-        $table.appendChild(genHeader(viorefs));
+        table.appendChild(genHeader(viorefs));
       }
       linenum++;
 
       if (sparkdata.hasOwnProperty(prop)) {
         var violations = sparkdata[prop];
 
-        var $row = document.createElement('tr');
-        $table.appendChild($row);
+        var row = document.createElement('tr');
+        table.appendChild(row);
 
         el = document.createElement('th');
         el.textContent = prop;
-        $row.appendChild(el);
+        row.appendChild(el);
 
         for (var i = 0; i < violations.length; i++) {
-          var $cell = document.createElement('td');
+          var cell = document.createElement('td');
           var sparkpoints = violations[i];
 
           if (sparkpoints !== undefined) {
-            if (i !== 0 && typeof (sparkpoints) === 'number') {
+            if (i !== 0 && typeof(sparkpoints) === 'number') {
               if (sparkpoints === 0) {
-                $cell.setAttribute('class', 'ok');
+                cell.setAttribute('class', 'ok');
               } else {
-                $cell.setAttribute('class', 'meh');
+                cell.setAttribute('class', 'meh');
               }
             } else if (i !== 0) {
               var maxval = Math.max.apply(Math, sparkpoints);
               var lastPoint = sparkpoints[sparkpoints.length - 1];
-              if (lastPoint === 0 || lastPoint < maxval) {
-                $cell.setAttribute('class', 'ok');
-              } else if (sparkpoints[0] == sparkpoints[sparkpoints.length - 1]) {
-                $cell.setAttribute('class', 'meh');
-              } else if (maxval <= sparkpoints[sparkpoints.length - 1]) {
-                $cell.setAttribute('class', 'bad');
+              if (lastPoint === 0) {
+                cell.setAttribute('class', 'ok');
+              } else if (sparkpoints[0] == lastPoint || maxval > lastPoint) {
+                cell.setAttribute('class', 'meh');
+              } else {
+                cell.setAttribute('class', 'bad');
               }
             }
 
-            $cell.append(drawSparkline(sparkpoints));
-            $cell.chartData = {
+            cell.appendChild(drawSparkline(sparkpoints));
+            cell.chartData = {
               data: chartdata[prop][i],
               prop: prop,
               vioname: viorefs[i],
             };
-            $cell.chartProp = chartdata[prop][i];
-            $cell.addEventListener('click', showChart);
+            cell.chartProp = chartdata[prop][i];
+            cell.addEventListener('click', showChart);
           }
 
-          $row.appendChild($cell);
+          row.appendChild(cell);
         }
       }
     }
-    document.getElementById('sparlines').appendChild($table);
+    document.getElementById('sparlines').appendChild(table);
   }
 
   function allSame(arr) {
@@ -281,13 +280,13 @@
     var per_day_data = [];
     var viorefs = parseVioNames(data.query.pages[0].revisions[0].content);
 
-    var display_viorefs = viorefs.map(function (name) {
+    var display_viorefs = viorefs.map(function(name) {
       var match = name.match(/"(.+)"/);
       var colname = match && match[1] || name;
       return colname;
     });
 
-    data.query.pages[0].revisions.forEach(function (revision) {
+    data.query.pages[0].revisions.forEach(function(revision) {
       var content = revision.content;
       per_day_data.push({
         timestamp: new Date(revision.timestamp).getTime(),
@@ -371,14 +370,14 @@
 
     genTable(display_viorefs, sparkdata, chartdata);
 
-    setStatus();
+    setStatus(null);
   }
 
   $.getJSON('https://www.wikidata.org/w/api.php?callback=?', {
     "action": "query",
     "prop": "revisions",
     "titles": "Wikidata:Database reports/Constraint violations/Summary",
-    "rvprop": "content|user|timestamp",
+    "rvprop": "content|timestamp",
     "rvlimit": 50,
     "format": "json",
     "formatversion": 2
@@ -389,13 +388,12 @@
   $.getJSON('https://query.wikidata.org/bigdata/namespace/wdq/sparql', {
     query: 'SELECT * { ?p rdf:type wikibase:Property ; rdfs:label ?l. FILTER(LANG(?l) = "en")}',
     format: 'json'
-  }).then(function (data) {
-    data.results.bindings.forEach(function (item) {
-      var key = item.p.value.match(/P\d+$/);
+  }).then(function(data) {
+    data.results.bindings.forEach(function(item) {
+      var key = item.p.value.match(/P\d+/);
       var value = item.l.value;
       propMap[key] = value;
     });
-    console.log(propMap);
   });
 
 })();
