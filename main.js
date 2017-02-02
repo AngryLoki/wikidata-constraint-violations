@@ -1,17 +1,26 @@
+var propMap = {};
+var viorefs_ids = [];
+var viorefs_labels = [];
+var sparkdata = {};
+var chartdata = {};
+var allGroups = [];
+
 (function() {
   "use strict";
 
   var chart = document.getElementById('chart');
-  var sparlines = document.getElementById('sparlines');
+  var sparklines_outer = document.getElementById('sparklines-outer');
+  var sparklines = document.getElementById('sparklines');
   var chartHeader = document.getElementById('chart-header');
   var vioLink = document.getElementById('chart-violink');
   var status = document.getElementById('status');
+  var groups = document.getElementById('groups');
 
   function showChart() {
     /* jshint -W040 */
     var chartData = this.chartData;
     chart.style.display = '';
-    sparlines.style.display = 'none';
+    sparklines_outer.style.display = 'none';
 
     var headerText;
     if (chartData.vioname == 'Items count') {
@@ -20,7 +29,7 @@
       headerText = '"' + chartData.vioname + '" violations for ' + chartData.prop;
     }
     if (chartData.prop in propMap) {
-      headerText += ' (' + propMap[chartData.prop] + ')';
+      headerText += ' (' + propMap[chartData.prop].name + ')';
     }
 
     chartHeader.textContent = headerText;
@@ -40,7 +49,7 @@
 
   document.getElementById('close').addEventListener('click', function() {
     chart.style.display = 'none';
-    sparlines.style.display = '';
+    sparklines_outer.style.display = '';
   });
 
   var last_benchmark_time = Date.now();
@@ -182,16 +191,21 @@
     return sparkdata;
   }
 
-  function genHeader(display_viorefs) {
+  function genHeader(visible_columns_names) {
     var header = document.createElement('tr');
 
     var el;
+
     el = document.createElement('th');
     el.textContent = 'Property';
     header.appendChild(el);
 
-    for (var id = 0; id < display_viorefs.length; id++) {
-      var colname = display_viorefs[id];
+    el = document.createElement('th');
+    el.textContent = 'Name';
+    header.appendChild(el);
+
+    for (var id = 0; id < visible_columns_names.length; id++) {
+      var colname = visible_columns_names[id];
       el = document.createElement('th');
       el.textContent = colname;
       header.appendChild(el);
@@ -199,7 +213,7 @@
     return header;
   }
 
-  function genTable(viorefs, sparkdata, chartdata) {
+  function genTable(group) {
     var el;
 
     var table = document.createElement('table');
@@ -207,60 +221,98 @@
 
     var linenum = 0;
 
+    var visible_rows = [];
+    var visible_columns = new Array(viorefs_ids.length);
+
     for (var prop in sparkdata) {
-      if (linenum % 20 === 0) {
-        table.appendChild(genHeader(viorefs));
-      }
-      linenum++;
-
-      if (sparkdata.hasOwnProperty(prop)) {
+      if (sparkdata.hasOwnProperty(prop) && prop in propMap && propMap[prop].group == group) {
         var violations = sparkdata[prop];
-
-        var row = document.createElement('tr');
-        table.appendChild(row);
-
-        el = document.createElement('th');
-        el.textContent = prop;
-        row.appendChild(el);
-
         for (var i = 0; i < violations.length; i++) {
-          var cell = document.createElement('td');
-          var sparkpoints = violations[i];
-
-          if (sparkpoints !== undefined) {
-            if (i !== 0 && typeof(sparkpoints) === 'number') {
-              if (sparkpoints === 0) {
-                cell.setAttribute('class', 'ok');
-              } else {
-                cell.setAttribute('class', 'meh');
-              }
-            } else if (i !== 0) {
-              var maxval = Math.max.apply(Math, sparkpoints);
-              var lastPoint = sparkpoints[sparkpoints.length - 1];
-              if (lastPoint === 0) {
-                cell.setAttribute('class', 'ok');
-              } else if (sparkpoints[0] == lastPoint || maxval > lastPoint) {
-                cell.setAttribute('class', 'meh');
-              } else {
-                cell.setAttribute('class', 'bad');
-              }
-            }
-
-            cell.appendChild(drawSparkline(sparkpoints));
-            cell.chartData = {
-              data: chartdata[prop][i],
-              prop: prop,
-              vioname: viorefs[i],
-            };
-            cell.chartProp = chartdata[prop][i];
-            cell.addEventListener('click', showChart);
+          if (violations[i] !== undefined) {
+            visible_columns[i] = true;
           }
-
-          row.appendChild(cell);
         }
+        visible_rows.push({
+          prop_id: prop,
+          violations: violations,
+        });
       }
     }
-    document.getElementById('sparlines').appendChild(table);
+
+    var visible_columns_names = [];
+    for (var i = 0; i < visible_columns.length; i++) {
+      if (visible_columns[i]) {
+        visible_columns_names.push(viorefs_labels[i]);
+      }
+    }
+
+    for (var i = 0; i < visible_rows.length; i++) {
+      var prop = visible_rows[i].prop_id;
+      var violations = visible_rows[i].violations;
+
+      if (i % 25 === 0) {
+        table.appendChild(genHeader(visible_columns_names));
+      }
+
+      var row = document.createElement('tr');
+      table.appendChild(row);
+
+      el = document.createElement('th');
+      el.textContent = prop;
+      row.appendChild(el);
+
+      el = document.createElement('td');
+      el.textContent = propMap[prop] && propMap[prop].name || "";
+      el.setAttribute('class', 'propname');
+      row.appendChild(el);
+
+      for (var j = 0; j < visible_columns.length; j++) {
+        if (!visible_columns[j]) {
+          continue;
+        }
+
+        var cell = document.createElement('td');
+        var sparkpoints = violations[j];
+
+        if (sparkpoints !== undefined) {
+          if (j !== 0 && typeof(sparkpoints) === 'number') {
+            if (sparkpoints === 0) {
+              cell.setAttribute('class', 'ok');
+            } else {
+              cell.setAttribute('class', 'meh');
+            }
+          } else if (j !== 0) {
+            var maxval = Math.max.apply(Math, sparkpoints);
+            var lastPoint = sparkpoints[sparkpoints.length - 1];
+            if (lastPoint === 0) {
+              cell.setAttribute('class', 'ok');
+            } else if (sparkpoints[0] == lastPoint || maxval > lastPoint) {
+              cell.setAttribute('class', 'meh');
+            } else {
+              cell.setAttribute('class', 'bad');
+            }
+          }
+
+          cell.appendChild(drawSparkline(sparkpoints));
+          cell.chartData = {
+            data: chartdata[prop][j],
+            prop: prop,
+            vioname: viorefs_labels[j],
+          };
+          cell.chartProp = chartdata[prop][j];
+          cell.addEventListener('click', showChart);
+        }
+
+        row.appendChild(cell);
+      }
+
+    }
+
+    while (sparklines.firstChild) {
+      sparklines.removeChild(sparklines.firstChild);
+    }
+
+    sparklines.appendChild(table);
   }
 
   function allSame(arr) {
@@ -272,15 +324,13 @@
     return true;
   }
 
-  setStatus('Loading chart data...');
-
   function processData(data) {
     setStatus('Parsing fetched content...');
 
     var per_day_data = [];
-    var viorefs = parseVioNames(data.query.pages[0].revisions[0].content);
+    viorefs_ids = parseVioNames(data.query.pages[0].revisions[0].content);
 
-    var display_viorefs = viorefs.map(function(name) {
+    viorefs_labels = viorefs_ids.map(function(name) {
       var match = name.match(/"(.+)"/);
       var colname = match && match[1] || name;
       return colname;
@@ -296,9 +346,6 @@
 
     setStatus("Generating table...");
 
-    var sparkdata = {};
-    var chartdata = {};
-
     var violations, name_index, name, prop;
     var day_data, ts;
     var val;
@@ -308,11 +355,11 @@
     for (prop in day_data) {
       if (day_data.hasOwnProperty(prop)) {
         violations = day_data[prop];
-        sparkdata[prop] = new Array(viorefs.length);
-        chartdata[prop] = new Array(viorefs.length);
+        sparkdata[prop] = new Array(viorefs_ids.length);
+        chartdata[prop] = new Array(viorefs_ids.length);
 
-        for (name_index = 0; name_index < viorefs.length; name_index++) {
-          name = viorefs[name_index];
+        for (name_index = 0; name_index < viorefs_ids.length; name_index++) {
+          name = viorefs_ids[name_index];
           if (name in violations) {
             val = violations[name];
             chartdata[prop][name_index] = [ts, val];
@@ -329,8 +376,8 @@
       for (prop in sparkdata) {
         if (sparkdata.hasOwnProperty(prop)) {
           violations = sparkdata[prop];
-          for (name_index = 0; name_index < viorefs.length; name_index++) {
-            name = viorefs[name_index];
+          for (name_index = 0; name_index < viorefs_ids.length; name_index++) {
+            name = viorefs_ids[name_index];
             if (name_index in sparkdata[prop]) {
               if (prop in day_data && name in day_data[prop]) {
                 val = day_data[prop][name];
@@ -368,32 +415,114 @@
 
     setStatus("Generating charts...");
 
-    genTable(display_viorefs, sparkdata, chartdata);
+    genTable(allGroups[0][0]);
 
     setStatus(null);
   }
 
-  $.getJSON('https://www.wikidata.org/w/api.php?callback=?', {
-    "action": "query",
-    "prop": "revisions",
-    "titles": "Wikidata:Database reports/Constraint violations/Summary",
-    "rvprop": "content|timestamp",
-    "rvlimit": 50,
-    "format": "json",
-    "formatversion": 2
-  }).then(processData);
+  function loadChartData() {
+    setStatus('Loading chart data...');
 
-  var propMap = {};
+    $.ajax({
+      url: 'https://www.wikidata.org/w/api.php',
+      jsonpCallback: 'chart_data_fetched',
+      dataType: 'jsonp',
+      cache: true,
+      data: {
+        "action": "query",
+        "prop": "revisions",
+        "titles": "Wikidata:Database reports/Constraint violations/Summary",
+        "rvprop": "content|timestamp",
+        "rvlimit": 50,
+        "format": "json",
+        "formatversion": 2,
+        "maxage": 10 * 60
+      }
+    }).then(processData);
+  }
 
-  $.getJSON('https://query.wikidata.org/bigdata/namespace/wdq/sparql', {
-    query: 'SELECT * { ?p rdf:type wikibase:Property ; rdfs:label ?l. FILTER(LANG(?l) = "en")}',
-    format: 'json'
-  }).then(function(data) {
-    data.results.bindings.forEach(function(item) {
-      var key = item.p.value.match(/P\d+/);
-      var value = item.l.value;
-      propMap[key] = value;
+  function loadPropertyList() {
+    setStatus('Loading property list...');
+
+    var allGroupsMap = {};
+
+    $.getJSON('https://query.wikidata.org/bigdata/namespace/wdq/sparql', {
+      query: 'SELECT * { ?p rdf:type wikibase:Property ; rdfs:label ?l ; wikibase:propertyType ?g. FILTER(LANG(?l) = "en")}',
+      format: 'json'
+    }).then(function(data) {
+      data.results.bindings.forEach(function(item) {
+        var prop_id = item.p.value.match(/P\d+/);
+        var prop_group = item.g.value.match(/#(.+)/)[1];
+        var prop_name = item.l.value;
+
+        allGroupsMap[prop_group] = (allGroupsMap[prop_group] || 0) + 1;
+
+        propMap[prop_id] = {
+          group: prop_group,
+          name: prop_name
+        };
+      });
+
+      allGroups = Object.keys(allGroupsMap).map(function(key) {
+        return [key, allGroupsMap[key]];
+      });
+
+      allGroups.sort(function(first, second) {
+        return second[1] - first[1];
+      });
+
+      for (var i = 0; i < allGroups.length; i++) {
+        // <li class="pure-menu-item"><a href="#" class="pure-menu-link">Home</a></li>
+        // <li class="pure-menu-item"><a href="#" class="pure-menu-link">About</a></li>
+        // <li class="pure-menu-item menu-item-divided pure-menu-selected"><a href="#" class="pure-menu-link">Services</a></li>
+        // <li class="pure-menu-item"><a href="#" class="pure-menu-link">Contact</a></li>
+
+        var group_text = allGroups[i][0] + ' (' + allGroups[i][1] + ')';
+        var $link = $('<a href="#" class="pure-menu-link" />')
+          .text(group_text);
+
+        var $list_item = $('<li class="pure-menu-item" />').append($link)
+        .data('group', allGroups[i][0])
+        .click(function() {
+          var $this = $(this);
+          if ($this.hasClass('pure-menu-selected')) {
+            return;
+          }
+          $this.addClass('pure-menu-selected').siblings().removeClass('pure-menu-selected');
+          genTable($this.data('group'));
+        });
+
+        if (i == 0) {
+          $list_item.addClass('pure-menu-selected');
+        }
+        $(groups).append($list_item);
+      }
+
+      loadChartData();
     });
+  }
+
+  loadPropertyList();
+})();
+
+
+(function() {
+  var layout = $('#layout'), menu = $('#menu'), menuLink = $('#menuLink'), content = $('#main');
+
+  function toggleAll(e) {
+    e.preventDefault();
+    layout.toggleClass('active');
+    menu.toggleClass('active');
+    menuLink.toggleClass('active');
+  }
+
+  menuLink.click(function(e) {
+    toggleAll(e);
   });
 
-})();
+  content.click(function(e) {
+    if (menu.hasClass('active')) {
+      toggleAll(e);
+    }
+  });
+}());
