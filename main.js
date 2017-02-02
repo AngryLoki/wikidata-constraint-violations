@@ -1,12 +1,12 @@
-var propMap = {};
-var viorefs_ids = [];
-var viorefs_labels = [];
-var sparkdata = {};
-var chartdata = {};
-var allGroups = [];
-
 (function() {
   "use strict";
+
+  var propMap = {};
+  var viorefs_ids = [];
+  var viorefs_labels = [];
+  var sparkdata = {};
+  var chartdata = {};
+  var allGroups = [];
 
   var chart = document.getElementById('chart');
   var sparklines_outer = document.getElementById('sparklines-outer');
@@ -141,23 +141,26 @@ var allGroups = [];
     canvas.height = height;
 
     var ctx = canvas.getContext('2d');
+    ctx.translate(0.5, 0.5);
 
     ctx.font = "8px sans-serif";
     ctx.textBaseline = "top";
     ctx.textAlign = "center";
-    ctx.fillText(formatNum(data), 25, 2);
+    ctx.fillText(formatNum(data), 25, 1);
 
     ctx.beginPath();
 
+    var fitheight = height - 1;
+
     if (minval == maxval) {
-      ctx.moveTo(0, height / 2 - 0.5);
-      ctx.lineTo(width, height / 2 - 0.5);
+      ctx.moveTo(0, fitheight / 2 - 0.5);
+      ctx.lineTo(width, fitheight / 2 - 0.5);
     } else {
-      var norm = height / (maxval - minval);
-      ctx.moveTo(0, height - (data[0] - minval) * norm);
+      var norm = fitheight / (maxval - minval);
+      ctx.moveTo(0, Math.round(fitheight - (data[0] - minval) * norm));
       var step = width / (data.length - 1);
       for (var i = 1; i < data.length; i++) {
-        ctx.lineTo(i * step, height - (data[i] - minval) * norm);
+        ctx.lineTo(i * step, Math.round(fitheight - (data[i] - minval) * norm));
       }
     }
 
@@ -214,6 +217,13 @@ var allGroups = [];
   }
 
   function genTable(group) {
+    if (!group.match(/^[A-Za-z]+$/)) {
+      return;
+    }
+
+    var $el = $("*[data-group='" + group + "']");
+    $el.addClass('pure-menu-selected').siblings().removeClass('pure-menu-selected');
+
     var el;
 
     var table = document.createElement('table');
@@ -415,7 +425,7 @@ var allGroups = [];
 
     setStatus("Generating charts...");
 
-    genTable(allGroups[0][0]);
+    genTable(location.hash.slice(1) || allGroups[0][0]);
 
     setStatus(null);
   }
@@ -472,29 +482,13 @@ var allGroups = [];
       });
 
       for (var i = 0; i < allGroups.length; i++) {
-        // <li class="pure-menu-item"><a href="#" class="pure-menu-link">Home</a></li>
-        // <li class="pure-menu-item"><a href="#" class="pure-menu-link">About</a></li>
-        // <li class="pure-menu-item menu-item-divided pure-menu-selected"><a href="#" class="pure-menu-link">Services</a></li>
-        // <li class="pure-menu-item"><a href="#" class="pure-menu-link">Contact</a></li>
-
         var group_text = allGroups[i][0] + ' (' + allGroups[i][1] + ')';
-        var $link = $('<a href="#" class="pure-menu-link" />')
+        var $link = $('<a class="pure-menu-link" />')
+          .attr("href", "#" + allGroups[i][0])
           .text(group_text);
 
         var $list_item = $('<li class="pure-menu-item" />').append($link)
-        .data('group', allGroups[i][0])
-        .click(function() {
-          var $this = $(this);
-          if ($this.hasClass('pure-menu-selected')) {
-            return;
-          }
-          $this.addClass('pure-menu-selected').siblings().removeClass('pure-menu-selected');
-          genTable($this.data('group'));
-        });
-
-        if (i == 0) {
-          $list_item.addClass('pure-menu-selected');
-        }
+          .attr('data-group', allGroups[i][0]);
         $(groups).append($list_item);
       }
 
@@ -503,11 +497,19 @@ var allGroups = [];
   }
 
   loadPropertyList();
+
+  $(window).on('hashchange', function() {
+    var group = location.hash.slice(1) || "ExternalId";
+    genTable(group);
+  });
 })();
 
 
 (function() {
-  var layout = $('#layout'), menu = $('#menu'), menuLink = $('#menuLink'), content = $('#main');
+  var layout = $('#layout'),
+    menu = $('#menu'),
+    menuLink = $('#menuLink'),
+    content = $('#main');
 
   function toggleAll(e) {
     e.preventDefault();

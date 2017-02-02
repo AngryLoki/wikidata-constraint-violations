@@ -1,6 +1,10 @@
+#main {
+  padding: 1em;
+}
+
 #status {
     font-family: Gotham Rounded A, Gotham Rounded B, Helvetica Neue, Arial, sans-serif;
-    font-size: 5.0rem;
+    font-size: 3.0rem;
     text-align: center;
 }
 
@@ -170,12 +174,12 @@ This is the parent `<div>` that contains the menu and the content area.
     padding-left: 0;
 }
     #layout.active #menu {
-        left: 150px;
-        width: 150px;
+        left: 180px;
+        width: 180px;
     }
 
     #layout.active .menu-link {
-        left: 150px;
+        left: 180px;
     }
 /*
 The content `<div>` is where all your content goes.
@@ -260,8 +264,7 @@ appears on the left side of the page.
         /*
         Change color of the anchor links on hover/focus.
         */
-        #menu .pure-menu li a:hover,
-        #menu .pure-menu li a:focus {
+        #menu .pure-menu li a:hover {
             background: #333;
         }
 
@@ -269,13 +272,14 @@ appears on the left side of the page.
     This styles the selected menu item `<li>`.
     */
     #menu .pure-menu-selected,
-    #menu .pure-menu-heading {
+    #menu .pure-menu li a:focus  {
         background: #1f8dd6;
     }
         /*
         This styles a link within a selected menu item `<li>`.
         */
-        #menu .pure-menu-selected a {
+        #menu .pure-menu-selected a,
+        #menu .pure-menu li a:focus {
             color: #fff;
         }
 
