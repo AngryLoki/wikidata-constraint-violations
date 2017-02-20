@@ -13,6 +13,7 @@
   var sparklines = document.getElementById('sparklines');
   var chartHeader = document.getElementById('chart-header');
   var vioLink = document.getElementById('chart-violink');
+  var propLink = document.getElementById('chart-proplink');
   var status = document.getElementById('status');
   var groups = document.getElementById('groups');
 
@@ -33,6 +34,7 @@
     }
 
     chartHeader.textContent = headerText;
+    propLink.setAttribute('href', getPropLink(chartData.prop));
     vioLink.setAttribute('href', getVioLink(chartData.prop, chartData.vioname));
 
     $.plot("#chart-placeholder", [chartData.data], {
@@ -81,9 +83,23 @@
     return prefix + prop + '#' + hash;
   }
 
-  function formatNum(arr) {
+  function getPropLink(prop) {
+    var prefix = 'https://www.wikidata.org/wiki/Property_talk:';
+    return prefix + prop;
+  }
+
+  function formatNum(num) {
+    if (num > 1000000) {
+      num = Math.floor(num / 1000000) + 'kk';
+    } else if (num > 1000) {
+      num = Math.floor(num / 1000) + 'k';
+    }
+
+    return num;
+  }
+
+  function formatArray(arr) {
     var last = arr[arr.length - 1];
-    var r = last.toString();
     var delta = last - arr[0];
     var sign = (delta > 0) && '+' || '';
 
@@ -113,7 +129,7 @@
 
       num = document.createElement('div');
       num.setAttribute('class', 'num');
-      num.textContent = data;
+      num.textContent = formatNum(data);
       el.appendChild(num);
 
       return el;
@@ -146,7 +162,7 @@
     ctx.font = "8px sans-serif";
     ctx.textBaseline = "top";
     ctx.textAlign = "center";
-    ctx.fillText(formatNum(data), 25, 1);
+    ctx.fillText(formatArray(data), 25, 1);
 
     ctx.beginPath();
 
@@ -276,6 +292,18 @@
       el.setAttribute('class', 'propname');
       row.appendChild(el);
 
+      var total_count = 0;
+      var total_delta = 0;
+      if (violations[0]) {
+        if (typeof(violations[0]) === 'number') {
+          total_count = violations[0];
+          total_delta = 0;
+        } else {
+          total_count = violations[0][violations[0].length - 1];
+          total_delta = Math.max(violations[0][violations[0].length - 1] - violations[0][0], 0);
+        }
+      }
+
       for (var j = 0; j < visible_columns.length; j++) {
         if (!visible_columns[j]) {
           continue;
@@ -285,22 +313,26 @@
         var sparkpoints = violations[j];
 
         if (sparkpoints !== undefined) {
-          if (j !== 0 && typeof(sparkpoints) === 'number') {
-            if (sparkpoints === 0) {
-              cell.setAttribute('class', 'ok');
-            } else {
-              cell.setAttribute('class', 'meh');
+          if (j !== 0) {
+            var danger = 0;
+            if (typeof(sparkpoints) === 'number') {
+              if (sparkpoints) {
+                var lastPoint = sparkpoints;
+                var k2 = Math.min(Math.max(lastPoint / total_count / 0.9, 0), 1);
+                var k3 = Math.min(Math.max(Math.log10(lastPoint) / 3 - 0.5, 0), 1);
+                danger = (k2 + k3) / 2;
+              }
+            } else if (j !== 0) {
+              var lastPoint = sparkpoints[sparkpoints.length - 1];
+              if (lastPoint) {
+                var firstPoint = sparkpoints[0];
+                var k2 = Math.min(Math.max(lastPoint / total_count / 0.9, 0), 1);
+                var k3 = Math.min(Math.max(Math.log10(lastPoint) / 3 - 0.5, 0), 1);
+                danger = 0.4 * k2 + 0.6 * k3;
+              }
             }
-          } else if (j !== 0) {
-            var maxval = Math.max.apply(Math, sparkpoints);
-            var lastPoint = sparkpoints[sparkpoints.length - 1];
-            if (lastPoint === 0) {
-              cell.setAttribute('class', 'ok');
-            } else if (sparkpoints[0] == lastPoint || maxval > lastPoint) {
-              cell.setAttribute('class', 'meh');
-            } else {
-              cell.setAttribute('class', 'bad');
-            }
+
+            cell.setAttribute('style', 'background-color: hsl(' + (120 * (1 - danger)) + ', 75%, 75%);');
           }
 
           cell.appendChild(drawSparkline(sparkpoints));
